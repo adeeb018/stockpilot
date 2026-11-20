@@ -7,6 +7,7 @@ from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from app.models import Base  # imports all model modules through models/__init__.py
+from app.core.config import get_settings
 
 config = context.config
 if config.config_file_name is not None:
@@ -15,10 +16,7 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 def get_url() -> str:
-    return os.environ.get(
-        "DATABASE_URL",
-        config.get_main_option("sqlalchemy.url")
-    )
+    return os.environ.get("DATABASE_URL", get_settings().database_url)
 
 def run_migrations_offline() -> None:
     context.configure(
