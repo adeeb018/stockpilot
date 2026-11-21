@@ -1,25 +1,21 @@
 # StockPilot backend
 
-## Configure
+Copy `.env.example` to `.env`. Generate a secret with:
+`python -c "import secrets; print(secrets.token_urlsafe(48))"`
+Set the result as `JWT_SECRET_KEY`.
 
-Copy `.env.example` to `.env` and set `DATABASE_URL`.
+Install and run:
+`pip install -e ".[dev]"`
+`uvicorn app.main:app --reload`
 
-## Run locally
+Authentication endpoints:
+- POST /api/v1/auth/register
+- POST /api/v1/auth/login (requires organization_id)
+- POST /api/v1/auth/refresh
+- POST /api/v1/auth/logout
+- GET /api/v1/auth/me
 
-```bash
-pip install -e ".[dev]"
-uvicorn app.main:app --reload
-```
-
-Open:
-- Swagger UI: http://localhost:8000/docs
-- Liveness: http://localhost:8000/api/v1/health/live
-- Readiness: http://localhost:8000/api/v1/health/ready
-
-## Test
-
-```bash
-pytest -q
-```
-
-The liveness endpoint checks that the process is responding. The readiness endpoint checks database connectivity. Do not use the liveness endpoint as a dependency health check.
+Registration creates an organization, owner role, membership and default permissions.
+Generate and review the auth_sessions migration:
+`alembic revision --autogenerate -m "add auth sessions"`
+`alembic upgrade head`
