@@ -37,3 +37,5 @@ htmlcov/
 *.db
 *.sqlite3
 pgdata/
+
+backend/.env.example
