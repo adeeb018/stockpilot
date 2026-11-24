@@ -11,6 +11,14 @@ from app.schemas.inventory import (
 )
 from app.services.inventory_service import InventoryService
 
+
+from app.schemas.reservations import (
+    ReservationCreate,
+    ReservationResponse,
+)
+from app.services.reservation_service import ReservationService
+
+
 router = APIRouter(prefix="/inventory", tags=["Inventory"])
 
 
@@ -63,4 +71,21 @@ async def get_inventory_movements(
         warehouse_id=warehouse_id,
         limit=limit,
         offset=offset,
+    )
+
+
+@router.post(
+    "/reservations",
+    response_model=ReservationResponse,
+    status_code=201,
+)
+async def create_reservation(
+    data: ReservationCreate,
+    db: AsyncSession = Depends(get_db),
+    context=Depends(require_permission("inventory.reserve")),
+):
+    return await ReservationService.create(
+        db=db,
+        organization_id=context.organization.id,
+        data=data,
     )
