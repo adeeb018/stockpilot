@@ -89,3 +89,18 @@ async def create_reservation(
         organization_id=context.organization.id,
         data=data,
     )
+
+@router.post(
+    "/reservations/{reservation_id}/release",
+    response_model=ReservationResponse,
+)
+async def release_reservation(
+    reservation_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    context=Depends(require_permission("inventory.reserve")),
+):
+    return await ReservationService.release(
+        db=db,
+        organization_id=context.organization.id,
+        reservation_id=reservation_id,
+    )

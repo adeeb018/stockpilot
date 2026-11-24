@@ -153,3 +153,81 @@ class ReservationService:
         except Exception:
             await db.rollback()
             raise
+
+    @staticmethod
+    async def release(
+        db: AsyncSession,
+        organization_id: UUID,
+        reservation_id: UUID,
+    ) -> StockReservation:
+
+        try:
+            # 1. Fetch and lock the reservation.
+            result = await db.execute(
+                select(StockReservation)
+                .where(
+                    StockReservation.id == reservation_id,
+                    StockReservation.organization_id == organization_id,
+                )
+                .with_for_update()
+            )
+
+            reservation = result.scalar_one_or_none()
+
+            if reservation is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Reservation not found",
+                )
+
+            # 2. Verify that reservation is active.
+            if reservation.status != ReservationStatus.ACTIVE:
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Cannot release reservation with status {reservation.status}",
+                )
+
+            # 3. Lock the corresponding inventory balance.
+            balance_result = await db.execute(
+                select(InventoryBalance)
+                .where(
+                    InventoryBalance.organization_id == organization_id,
+                    InventoryBalance.product_id == reservation.product_id,
+                    InventoryBalance.warehouse_id == reservation.warehouse_id,
+                )
+                .with_for_update()
+            )
+
+            balance = balance_result.scalar_one_or_none()
+
+            if balance is None:
+                raise HTTPException(
+                    status_code=409,
+                    detail="Inventory balance not found",
+                )
+
+            # 4. Return reserved stock to available stock.
+            if balance.quantity_reserved < reservation.quantity:
+                raise HTTPException(
+                    status_code=409,
+                    detail="Inventory reservation balance is inconsistent",
+                )
+
+            balance.quantity_reserved -= reservation.quantity
+
+            # 5. Update reservation status.
+            reservation.status = ReservationStatus.RELEASED
+
+            # 6. Commit both changes atomically.
+            await db.commit()
+            await db.refresh(reservation)
+
+            return reservation
+
+        except HTTPException:
+            await db.rollback()
+            raise
+
+        except Exception:
+            await db.rollback()
+            raise
